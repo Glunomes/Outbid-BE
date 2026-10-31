@@ -3,5 +3,7 @@ node_modules
 .gitattributes
 AGENTS.md
 /generated/prisma
+/src/generated/prisma
 dist
 *.tsbuildinfo
+TOPIC_TASKS.md
