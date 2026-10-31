@@ -1,0 +1,7 @@
+node_modules
+.env
+.gitattributes
+AGENTS.md
+/generated/prisma
+dist
+*.tsbuildinfo

@@ -1,0 +1,30 @@
+enum AuctionStatus {
+  DRAFT
+  SCHEDULED
+  ACTIVE
+  ENDED
+  CANCELLED
+}
+
+model Lot {
+  id            String        @id @default(uuid())
+  name          String
+  description   String?
+  startingPrice Decimal       @map("starting_price") @db.Decimal(12, 2)
+  currentPrice  Decimal?      @map("current_price") @db.Decimal(12, 2)
+  auctionStart  DateTime?     @map("auction_start")
+  auctionEnd    DateTime?     @map("auction_end")
+  status        AuctionStatus @default(DRAFT)
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+  sellerId      String        @map("seller_id")
+  winnerId      String?       @map("winner_id")
+
+  winner User? @relation("WonLots", fields: [winnerId], references: [id], onDelete: Restrict)
+  seller User  @relation("CreatedLots", fields: [sellerId], references: [id], onDelete: Restrict)
+  bids   Bid[]
+
+  @@index([status, auctionEnd])
+  @@index([sellerId])
+  @@map("lots")
+}

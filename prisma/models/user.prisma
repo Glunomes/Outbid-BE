@@ -1,0 +1,14 @@
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  wallet      Wallet?
+  createdLots Lot[]   @relation("CreatedLots")
+  wonLots     Lot[]   @relation("WonLots")
+  bids        Bid[]
+
+  @@map("users")
+}
