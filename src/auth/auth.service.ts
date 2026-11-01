@@ -1,7 +1,14 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
-import { PrismaService } from "../prisma/prisma.service.js";
+import {
+  ConflictException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service.js';
 import { JwtService } from '@nestjs/jwt';
-import type { RegisterDto, RegisterResponseDto } from './schemas/register.schemas.js';
+import type {
+  RegisterDto,
+  RegisterResponseDto,
+} from './schemas/register.schemas.js';
 import { hashPassword, comparePassword } from './utils/hash.util.js';
 import { Prisma } from '../generated/prisma/client.js';
 import type { LoginDto, LoginResponseDto } from './schemas/login.schemas.js';
@@ -15,7 +22,7 @@ export class AuthService {
 
   constructor(
     private readonly prismaService: PrismaService,
-    private readonly jwtService: JwtService
+    private readonly jwtService: JwtService,
   ) {
     const accessSecret = process.env.JWT_ACCESS_SECRET;
     const refreshSecret = process.env.JWT_REFRESH_SECRET;
@@ -61,13 +68,13 @@ export class AuthService {
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2002'
       ) {
-        throw new ConflictException('User with that email already exists')
+        throw new ConflictException('User with that email already exists');
       }
       throw error;
     }
   }
 
-    private generateTokens(userId: string, email: string) {
+  private generateTokens(userId: string, email: string) {
     const payload = { sub: userId, email };
 
     const accessToken = this.jwtService.sign(payload, {
@@ -85,11 +92,11 @@ export class AuthService {
 
   async login(dto: LoginDto): Promise<LoginResponseDto> {
     const user = await this.prismaService.user.findUnique({
-      where: { email: dto.email }
+      where: { email: dto.email },
     });
 
-    if(!user || !(await comparePassword(dto.password, user.passwordHash))) {
-      throw new UnauthorizedException('Invalid email or password')
+    if (!user || !(await comparePassword(dto.password, user.passwordHash))) {
+      throw new UnauthorizedException('Invalid email or password');
     }
 
     return this.generateTokens(user.id, user.email);

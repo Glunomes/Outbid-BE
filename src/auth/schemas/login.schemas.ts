@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const loginSchema = z.object({
   email: z.email('Please provide email format'),
-  password: z.string()
+  password: z.string(),
 });
 
 export type LoginDto = z.infer<typeof loginSchema>;

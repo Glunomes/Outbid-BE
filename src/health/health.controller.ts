@@ -1,10 +1,4 @@
-import {
-  Controller,
-  Get,
-  Header,
-  Logger,
-  Res,
-} from '@nestjs/common';
+import { Controller, Get, Header, Logger, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import { PrismaService } from '../prisma/prisma.service.js';
 
