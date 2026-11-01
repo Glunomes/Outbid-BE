@@ -55,6 +55,9 @@ export class AuthService {
           name: dto.name,
           email: dto.email,
           passwordHash,
+          wallet: {
+            create: {},
+          },
         },
       });
 
