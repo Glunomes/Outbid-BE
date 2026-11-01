@@ -12,3 +12,11 @@ export const registerSchema = z.object({
 });
 
 export type RegisterDto = z.infer<typeof registerSchema>;
+
+export const registerSchemaResponse = z.object({
+  id: z.uuid(),
+  email: z.email(),
+  name: z.string().min(3)
+})
+
+export type RegisterResponseDto = z.infer<typeof registerSchemaResponse>;
