@@ -1,56 +1,35 @@
 import { z } from 'zod';
 import { AuctionStatus } from '../../generated/prisma/enums.js';
+import { getAuctionScheduleIssues } from '../utils/auction-schedule.util.js';
 
 const auctionDateSchema = z.iso.datetime({ offset: true });
+
+export const lotPriceSchema = z
+  .string()
+  .regex(
+    /^(?:0|[1-9]\d{0,9})(?:\.\d{1,2})?$/,
+    'Enter a valid price with up to 2 decimal places',
+  )
+  .refine((value) => Number(value) >= 0, 'Price cannot be negative');
 
 export const createLotSchema = z
   .object({
     name: z.string().min(3),
     description: z.string().optional(),
-    startingPrice: z
-      .string()
-      .regex(
-        /^(?:0|[1-9]\d{0,9})(?:\.\d{1,2})?$/,
-        'Enter a valid price with up to 2 decimal places',
-      )
-      .refine((value) => Number(value) >= 0, 'Price cannot be negative'),
+    startingPrice: lotPriceSchema,
     auctionStart: auctionDateSchema.optional(),
     auctionEnd: auctionDateSchema.optional(),
   })
   .superRefine(({ auctionStart, auctionEnd }, ctx) => {
-    if (auctionStart && !auctionEnd) {
+    for (const issue of getAuctionScheduleIssues(
+      auctionStart,
+      auctionEnd,
+      'create',
+    )) {
       ctx.addIssue({
         code: 'custom',
-        path: ['auctionEnd'],
-        message: 'Auction end time is required when start time is set.',
-      });
-    }
-
-    if (auctionEnd && !auctionStart) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['auctionStart'],
-        message: 'Auction start time is required when end time is set.',
-      });
-    }
-
-    if (auctionStart && new Date(auctionStart).getTime() < Date.now()) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['auctionStart'],
-        message: 'Auction start time cannot be in the past.',
-      });
-    }
-
-    if (
-      auctionStart &&
-      auctionEnd &&
-      new Date(auctionEnd).getTime() <= new Date(auctionStart).getTime()
-    ) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['auctionEnd'],
-        message: 'Auction end time must be after the start time.',
+        path: [issue.path],
+        message: issue.message,
       });
     }
   });
