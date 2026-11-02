@@ -8,12 +8,17 @@ import {
 } from '@nestjs/common';
 import { AuctionStatus, Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { BidsGateway } from './bids.gateway.js';
+import { getExtendedAuctionEnd } from './utils/auction-extension.util.js';
 import type { BidHistoryResponseDto } from './schemas/bid-history.schemas.js';
 import type { MakeBidResponseDto } from './schemas/make-bid.schemas.js';
 
 @Injectable()
 export class BidsService {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly bidsGateway: BidsGateway,
+  ) {}
 
   async getBidHistory(lotId: string): Promise<BidHistoryResponseDto> {
     const lot = await this.prismaService.lot.findUnique({
@@ -61,7 +66,7 @@ export class BidsService {
       throw new BadRequestException('Bid amount must be greater than zero.');
     }
 
-    return this.prismaService.$transaction(async (transaction) => {
+    const result = await this.prismaService.$transaction(async (transaction) => {
       await transaction.$queryRaw`
         SELECT id FROM lots WHERE id = ${lotId} FOR UPDATE
       `;
@@ -209,18 +214,37 @@ export class BidsService {
         select: { id: true },
       });
 
+      const extendedAuctionEnd = getExtendedAuctionEnd(lot.auctionEnd, now);
+      const auctionEnd = extendedAuctionEnd ?? lot.auctionEnd;
+      const auctionExtended = extendedAuctionEnd !== undefined;
+
       await transaction.lot.update({
         where: { id: lotId },
-        data: { currentPrice: bidAmount },
+        data: {
+          currentPrice: bidAmount,
+          ...(auctionExtended ? { auctionEnd } : {}),
+        },
       });
 
       return {
-        bidId: bid.id,
-        lotId,
-        amount: bidAmount.toFixed(2),
-        currentPrice: bidAmount.toFixed(2),
-        auctionEnd: lot.auctionEnd.toISOString(),
+        response: {
+          bidId: bid.id,
+          lotId,
+          amount: bidAmount.toFixed(2),
+          currentPrice: bidAmount.toFixed(2),
+          auctionEnd: auctionEnd.toISOString(),
+        },
+        auctionExtended,
       };
     });
+
+    if (result.auctionExtended) {
+      this.bidsGateway.broadcastAuctionExtended(
+        lotId,
+        result.response.auctionEnd,
+      );
+    }
+
+    return result.response;
   }
 }

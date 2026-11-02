@@ -65,13 +65,11 @@ export class LotsController {
     return this.lotsService.cancelLot(id, user.userId);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Get(':id')
   getLot(@Param('id', ParseUUIDPipe) id: string): Promise<LotResponseDto> {
     return this.lotsService.getLot(id);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Get()
   getLots(
     @Query(new ZodValidationPipe(lotsCatalogQuerySchema))
