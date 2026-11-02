@@ -1,11 +1,12 @@
 import {
   Body,
   Controller,
-  Delete,
   Param,
   ParseUUIDPipe,
+  Get,
   Post,
   Put,
+  Delete,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -18,7 +19,7 @@ import { LotsService } from './lots.service.js';
 import {
   createLotSchema,
   type CreateLotDto,
-  type CreateLotResponseDto,
+  type LotResponseDto,
 } from './schemas/create-lots.schemas.js';
 import {
   updateLotSchema,
@@ -35,7 +36,7 @@ export class LotsController {
   createLot(
     @Body(new ZodValidationPipe(createLotSchema)) dto: CreateLotDto,
     @CurrentUser() user: AuthenticatedUser,
-  ): Promise<CreateLotResponseDto> {
+  ): Promise<LotResponseDto> {
     return this.lotsService.createLot(dto, user.userId);
   }
 
@@ -56,5 +57,11 @@ export class LotsController {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<{ lotId: string; cancelled: true }> {
     return this.lotsService.cancelLot(id, user.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get(':id')
+  getLot(@Param('id', ParseUUIDPipe) id: string): Promise<LotResponseDto> {
+    return this.lotsService.getLot(id);
   }
 }

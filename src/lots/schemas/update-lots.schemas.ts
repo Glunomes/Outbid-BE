@@ -1,9 +1,6 @@
 import { z } from 'zod';
 import { getAuctionScheduleIssues } from '../utils/auction-schedule.util.js';
-import {
-  createLotSchemaResponse,
-  lotPriceSchema,
-} from './create-lots.schemas.js';
+import { lotSchemaResponse, lotPriceSchema } from './create-lots.schemas.js';
 
 const auctionDateSchema = z.iso.datetime({ offset: true });
 
@@ -32,6 +29,6 @@ export const updateLotSchema = z
 
 export type UpdateLotDto = z.infer<typeof updateLotSchema>;
 
-export const updateLotSchemaResponse = createLotSchemaResponse;
+export const updateLotSchemaResponse = lotSchemaResponse;
 
 export type UpdateLotResponseDto = z.infer<typeof updateLotSchemaResponse>;

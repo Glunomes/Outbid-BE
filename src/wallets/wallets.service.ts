@@ -30,10 +30,7 @@ export class WalletsService {
     };
   }
 
-  async deposit(
-    amount: string,
-    userId: string,
-  ): Promise<WalletResponseDto> {
+  async deposit(amount: string, userId: string): Promise<WalletResponseDto> {
     if (!/^(?:0|[1-9]\d{0,9})(?:\.\d{1,2})?$/.test(amount)) {
       throw new BadRequestException(
         'Deposit amount must be a positive number with up to 2 decimal places.',
@@ -42,7 +39,9 @@ export class WalletsService {
 
     const depositAmount = new Prisma.Decimal(amount);
     if (depositAmount.lte(0)) {
-      throw new BadRequestException('Deposit amount must be greater than zero.');
+      throw new BadRequestException(
+        'Deposit amount must be greater than zero.',
+      );
     }
 
     const existingWallet = await this.prismaService.wallet.findUnique({

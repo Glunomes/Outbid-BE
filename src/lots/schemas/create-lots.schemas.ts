@@ -36,7 +36,7 @@ export const createLotSchema = z
 
 export type CreateLotDto = z.infer<typeof createLotSchema>;
 
-export const createLotSchemaResponse = z.object({
+export const lotSchemaResponse = z.object({
   id: z.uuid(),
   name: z.string(),
   description: z.string().nullable(),
@@ -49,4 +49,4 @@ export const createLotSchemaResponse = z.object({
   updatedAt: z.iso.datetime(),
 });
 
-export type CreateLotResponseDto = z.infer<typeof createLotSchemaResponse>;
+export type LotResponseDto = z.infer<typeof lotSchemaResponse>;

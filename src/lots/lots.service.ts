@@ -6,7 +6,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service.js';
 import type {
   CreateLotDto,
-  CreateLotResponseDto,
+  LotResponseDto,
 } from './schemas/create-lots.schemas.js';
 import type {
   UpdateLotDto,
@@ -15,6 +15,52 @@ import type {
 import { Prisma } from '../generated/prisma/client.js';
 import { AuctionStatus } from '../generated/prisma/enums.js';
 
+const lotResponseSelect = {
+  id: true,
+  name: true,
+  description: true,
+  startingPrice: true,
+  currentPrice: true,
+  auctionStart: true,
+  auctionEnd: true,
+  status: true,
+  createdAt: true,
+  updatedAt: true,
+} satisfies Prisma.LotSelect;
+
+const lotCardSelect = {
+  ...lotResponseSelect,
+  seller: { select: { name: true } },
+} satisfies Prisma.LotSelect;
+
+type LotResponseRecord = Prisma.LotGetPayload<{
+  select: typeof lotResponseSelect;
+}>;
+
+type LotCardRecord = Prisma.LotGetPayload<{
+  select: typeof lotCardSelect;
+}>;
+
+export type LotCardResponseDto = LotResponseDto & { seller: { name: string } };
+
+const toLotResponse = (lot: LotResponseRecord): LotResponseDto => ({
+  id: lot.id,
+  name: lot.name,
+  description: lot.description,
+  startingPrice: lot.startingPrice.toFixed(2),
+  currentPrice: lot.currentPrice?.toFixed(2) ?? null,
+  auctionStart: lot.auctionStart?.toISOString() ?? null,
+  auctionEnd: lot.auctionEnd?.toISOString() ?? null,
+  status: lot.status,
+  createdAt: lot.createdAt.toISOString(),
+  updatedAt: lot.updatedAt.toISOString(),
+});
+
+const toLotCardResponse = (lot: LotCardRecord): LotCardResponseDto => ({
+  ...toLotResponse(lot),
+  seller: lot.seller,
+});
+
 @Injectable()
 export class LotsService {
   constructor(private readonly prismaService: PrismaService) {}
@@ -22,7 +68,7 @@ export class LotsService {
   async createLot(
     dto: CreateLotDto,
     sellerId: string,
-  ): Promise<CreateLotResponseDto> {
+  ): Promise<LotResponseDto> {
     const startingPrice = new Prisma.Decimal(dto.startingPrice);
     const lot = await this.prismaService.lot.create({
       data: {
@@ -36,32 +82,10 @@ export class LotsService {
           : AuctionStatus.DRAFT,
         sellerId,
       },
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        startingPrice: true,
-        currentPrice: true,
-        auctionStart: true,
-        auctionEnd: true,
-        status: true,
-        createdAt: true,
-        updatedAt: true,
-      },
+      select: lotResponseSelect,
     });
 
-    return {
-      id: lot.id,
-      name: lot.name,
-      description: lot.description,
-      startingPrice: lot.startingPrice.toFixed(2),
-      currentPrice: lot.currentPrice?.toFixed(2) ?? null,
-      auctionStart: lot.auctionStart?.toISOString() ?? null,
-      auctionEnd: lot.auctionEnd?.toISOString() ?? null,
-      status: lot.status,
-      createdAt: lot.createdAt.toISOString(),
-      updatedAt: lot.updatedAt.toISOString(),
-    };
+    return toLotResponse(lot);
   }
 
   async updateLot(
@@ -135,33 +159,11 @@ export class LotsService {
               }
             : {}),
         },
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          startingPrice: true,
-          currentPrice: true,
-          auctionStart: true,
-          auctionEnd: true,
-          status: true,
-          createdAt: true,
-          updatedAt: true,
-        },
+        select: lotResponseSelect,
       });
     });
 
-    return {
-      id: lot.id,
-      name: lot.name,
-      description: lot.description,
-      startingPrice: lot.startingPrice.toFixed(2),
-      currentPrice: lot.currentPrice?.toFixed(2) ?? null,
-      auctionStart: lot.auctionStart?.toISOString() ?? null,
-      auctionEnd: lot.auctionEnd?.toISOString() ?? null,
-      status: lot.status,
-      createdAt: lot.createdAt.toISOString(),
-      updatedAt: lot.updatedAt.toISOString(),
-    };
+    return toLotResponse(lot);
   }
 
   async cancelLot(
@@ -221,5 +223,18 @@ export class LotsService {
     }
 
     return new Date(requestedDate).getTime() !== currentDate.getTime();
+  }
+
+  async getLot(lotId: string): Promise<LotCardResponseDto> {
+    const lot = await this.prismaService.lot.findUnique({
+      where: { id: lotId },
+      select: lotCardSelect,
+    });
+
+    if (!lot) {
+      throw new NotFoundException('Lot not found');
+    }
+
+    return toLotCardResponse(lot);
   }
 }
