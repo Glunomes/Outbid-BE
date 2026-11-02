@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -12,6 +13,11 @@ import type {
   UpdateLotDto,
   UpdateLotResponseDto,
 } from './schemas/update-lots.schemas.js';
+import type {
+  LotCatalogItemDto,
+  LotsCatalogOptions,
+  LotsCatalogResponseDto,
+} from './interfaces/lots-catalog.interfaces.js';
 import { Prisma } from '../generated/prisma/client.js';
 import { AuctionStatus } from '../generated/prisma/enums.js';
 
@@ -64,6 +70,86 @@ const toLotCardResponse = (lot: LotCardRecord): LotCardResponseDto => ({
 @Injectable()
 export class LotsService {
   constructor(private readonly prismaService: PrismaService) {}
+
+  async getLots({
+    page = 1,
+    limit = 25,
+    name,
+    status,
+    auctionStartFrom,
+    auctionStartTo,
+  }: LotsCatalogOptions = {}): Promise<LotsCatalogResponseDto> {
+    if (!Number.isInteger(page) || page < 1) {
+      throw new BadRequestException('Page must be a positive integer.');
+    }
+
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+      throw new BadRequestException('Limit must be between 1 and 100.');
+    }
+
+    const conditions: Prisma.LotWhereInput[] = [
+      { status: { notIn: [AuctionStatus.DRAFT, AuctionStatus.CANCELLED] } },
+    ];
+
+    if (name) {
+      conditions.push({
+        name: { contains: name.trim(), mode: 'insensitive' },
+      });
+    }
+
+    if (status) {
+      conditions.push({ status });
+    }
+
+    if (auctionStartFrom || auctionStartTo) {
+      conditions.push({
+        auctionStart: {
+          ...(auctionStartFrom ? { gte: new Date(auctionStartFrom) } : {}),
+          ...(auctionStartTo ? { lte: new Date(auctionStartTo) } : {}),
+        },
+      });
+    }
+
+    const where: Prisma.LotWhereInput = { AND: conditions };
+
+    const [lots, total] = await this.prismaService.$transaction([
+      this.prismaService.lot.findMany({
+        where,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        skip: (page - 1) * limit,
+        take: limit,
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          startingPrice: true,
+          currentPrice: true,
+          auctionStart: true,
+          auctionEnd: true,
+          status: true,
+        },
+      }),
+      this.prismaService.lot.count({ where }),
+    ]);
+
+    return {
+      lots: lots.map(
+        (lot): LotCatalogItemDto => ({
+          id: lot.id,
+          name: lot.name,
+          description: lot.description,
+          price: (lot.currentPrice ?? lot.startingPrice).toFixed(2),
+          auctionStart: lot.auctionStart?.toISOString() ?? null,
+          auctionEnd: lot.auctionEnd?.toISOString() ?? null,
+          status: lot.status,
+        }),
+      ),
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
 
   async createLot(
     dto: CreateLotDto,

@@ -4,6 +4,7 @@ import {
   Param,
   ParseUUIDPipe,
   Get,
+  Query,
   Post,
   Put,
   Delete,
@@ -26,6 +27,11 @@ import {
   type UpdateLotDto,
   type UpdateLotResponseDto,
 } from './schemas/update-lots.schemas.js';
+import {
+  lotsCatalogQuerySchema,
+  type LotsCatalogQueryDto,
+} from './schemas/lots-catalog.schemas.js';
+import type { LotsCatalogResponseDto } from './interfaces/lots-catalog.interfaces.js';
 
 @Controller('lots')
 export class LotsController {
@@ -63,5 +69,14 @@ export class LotsController {
   @Get(':id')
   getLot(@Param('id', ParseUUIDPipe) id: string): Promise<LotResponseDto> {
     return this.lotsService.getLot(id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get()
+  getLots(
+    @Query(new ZodValidationPipe(lotsCatalogQuerySchema))
+    query: LotsCatalogQueryDto,
+  ): Promise<LotsCatalogResponseDto> {
+    return this.lotsService.getLots(query);
   }
 }
