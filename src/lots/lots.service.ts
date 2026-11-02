@@ -99,6 +99,16 @@ export class LotsService {
 
       if (
         existingLot.status === AuctionStatus.SCHEDULED &&
+        existingLot.auctionStart !== null &&
+        existingLot.auctionStart <= new Date()
+      ) {
+        throw new ConflictException(
+          'A scheduled auction cannot be updated after it has started.',
+        );
+      }
+
+      if (
+        existingLot.status === AuctionStatus.SCHEDULED &&
         (this.isDateChanged(dto.auctionStart, existingLot.auctionStart) ||
           this.isDateChanged(dto.auctionEnd, existingLot.auctionEnd))
       ) {
