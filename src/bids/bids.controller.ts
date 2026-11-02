@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   Param,
   ParseUUIDPipe,
   Post,
@@ -13,6 +14,7 @@ import {
 import { BidsService } from './bids.service.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe.js';
+import type { BidHistoryResponseDto } from './schemas/bid-history.schemas.js';
 import {
   makeBidSchema,
   type MakeBidDto,
@@ -22,6 +24,14 @@ import {
 @Controller('lots/:lotId/bids')
 export class BidsController {
   constructor(private readonly bidsService: BidsService) {}
+
+  @UseGuards(JwtAuthGuard)
+  @Get()
+  getBidHistory(
+    @Param('lotId', ParseUUIDPipe) lotId: string,
+  ): Promise<BidHistoryResponseDto> {
+    return this.bidsService.getBidHistory(lotId);
+  }
 
   @UseGuards(JwtAuthGuard)
   @Post()

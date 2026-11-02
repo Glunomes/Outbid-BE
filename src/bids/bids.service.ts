@@ -8,11 +8,42 @@ import {
 } from '@nestjs/common';
 import { AuctionStatus, Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import type { BidHistoryResponseDto } from './schemas/bid-history.schemas.js';
 import type { MakeBidResponseDto } from './schemas/make-bid.schemas.js';
 
 @Injectable()
 export class BidsService {
   constructor(private readonly prismaService: PrismaService) {}
+
+  async getBidHistory(lotId: string): Promise<BidHistoryResponseDto> {
+    const lot = await this.prismaService.lot.findUnique({
+      where: { id: lotId },
+      select: { id: true },
+    });
+
+    if (!lot) {
+      throw new NotFoundException('Lot not found.');
+    }
+
+    const bids = await this.prismaService.bid.findMany({
+      where: { lotId },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: 25,
+      select: {
+        id: true,
+        amount: true,
+        createdAt: true,
+      },
+    });
+
+    return {
+      lotId,
+      bids: bids.map((bid) => ({
+        amount: bid.amount.toFixed(2),
+        createdAt: bid.createdAt.toISOString(),
+      })),
+    };
+  }
 
   async makeBid(
     lotId: string,
