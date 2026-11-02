@@ -5,6 +5,7 @@ import { AuthModule } from './auth/auth.module.js';
 import { HealthModule } from './health/health.module.js';
 import { LotsModule } from './lots/lots.module.js';
 import { WalletsModule } from './wallets/wallets.module.js';
+import { BidsModule } from './bids/bids.module.js';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { WalletsModule } from './wallets/wallets.module.js';
     HealthModule,
     LotsModule,
     WalletsModule,
+    BidsModule,
   ],
   controllers: [],
   providers: [],
