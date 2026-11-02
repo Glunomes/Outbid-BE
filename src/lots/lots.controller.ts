@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Param,
   ParseUUIDPipe,
   Post,
@@ -46,5 +47,14 @@ export class LotsController {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<UpdateLotResponseDto> {
     return this.lotsService.updateLot(id, dto, user.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete(':id')
+  cancelLot(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<{ lotId: string; cancelled: true }> {
+    return this.lotsService.cancelLot(id, user.userId);
   }
 }

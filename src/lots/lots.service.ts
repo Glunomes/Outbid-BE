@@ -69,54 +69,75 @@ export class LotsService {
     dto: UpdateLotDto,
     sellerId: string,
   ): Promise<UpdateLotResponseDto> {
-    const existingLot = await this.prismaService.lot.findUnique({
-      where: {
-        id: lotId,
-        sellerId,
-      },
-      select: {
-        id: true,
-        status: true,
-      },
-    });
+    const lot = await this.prismaService.$transaction(async (transaction) => {
+      await transaction.$queryRaw`
+        SELECT id FROM lots WHERE id = ${lotId} FOR UPDATE
+      `;
 
-    if (!existingLot) {
-      throw new NotFoundException('Lot not found');
-    }
+      const existingLot = await transaction.lot.findUnique({
+        where: { id: lotId, sellerId },
+        select: {
+          id: true,
+          status: true,
+          auctionStart: true,
+          auctionEnd: true,
+        },
+      });
 
-    if (
-      existingLot.status !== AuctionStatus.DRAFT &&
-      existingLot.status !== AuctionStatus.SCHEDULED
-    ) {
-      throw new ConflictException(
-        'Only draft or scheduled lots can be updated.',
-      );
-    }
+      if (!existingLot) {
+        throw new NotFoundException('Lot not found');
+      }
 
-    const lot = await this.prismaService.lot.update({
-      where: { id: lotId },
-      data: {
-        name: dto.name,
-        description: dto.description,
-        startingPrice: new Prisma.Decimal(dto.startingPrice),
-        auctionStart: dto.auctionStart ? new Date(dto.auctionStart) : null,
-        auctionEnd: dto.auctionEnd ? new Date(dto.auctionEnd) : null,
-        status: dto.auctionStart
-          ? AuctionStatus.SCHEDULED
-          : AuctionStatus.DRAFT,
-      },
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        startingPrice: true,
-        currentPrice: true,
-        auctionStart: true,
-        auctionEnd: true,
-        status: true,
-        createdAt: true,
-        updatedAt: true,
-      },
+      if (
+        existingLot.status !== AuctionStatus.DRAFT &&
+        existingLot.status !== AuctionStatus.SCHEDULED
+      ) {
+        throw new ConflictException(
+          'Only draft or scheduled lots can be updated.',
+        );
+      }
+
+      if (
+        existingLot.status === AuctionStatus.SCHEDULED &&
+        (this.isDateChanged(dto.auctionStart, existingLot.auctionStart) ||
+          this.isDateChanged(dto.auctionEnd, existingLot.auctionEnd))
+      ) {
+        throw new ConflictException(
+          'Auction schedule cannot be changed after it is scheduled.',
+        );
+      }
+
+      return transaction.lot.update({
+        where: { id: lotId },
+        data: {
+          name: dto.name,
+          description: dto.description,
+          startingPrice: new Prisma.Decimal(dto.startingPrice),
+          ...(existingLot.status === AuctionStatus.DRAFT
+            ? {
+                auctionStart: dto.auctionStart
+                  ? new Date(dto.auctionStart)
+                  : null,
+                auctionEnd: dto.auctionEnd ? new Date(dto.auctionEnd) : null,
+                status: dto.auctionStart
+                  ? AuctionStatus.SCHEDULED
+                  : AuctionStatus.DRAFT,
+              }
+            : {}),
+        },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          startingPrice: true,
+          currentPrice: true,
+          auctionStart: true,
+          auctionEnd: true,
+          status: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
     });
 
     return {
@@ -131,5 +152,64 @@ export class LotsService {
       createdAt: lot.createdAt.toISOString(),
       updatedAt: lot.updatedAt.toISOString(),
     };
+  }
+
+  async cancelLot(
+    lotId: string,
+    sellerId: string,
+  ): Promise<{ lotId: string; cancelled: true }> {
+    await this.prismaService.$transaction(async (transaction) => {
+      await transaction.$queryRaw`
+        SELECT id FROM lots WHERE id = ${lotId} FOR UPDATE
+      `;
+
+      const lot = await transaction.lot.findUnique({
+        where: { id: lotId, sellerId },
+        select: {
+          id: true,
+          status: true,
+          auctionEnd: true,
+          _count: { select: { bids: true } },
+        },
+      });
+
+      if (!lot) {
+        throw new NotFoundException('Lot not found');
+      }
+
+      if (
+        lot.status === AuctionStatus.CANCELLED ||
+        lot.status === AuctionStatus.ENDED ||
+        (lot.status === AuctionStatus.ACTIVE &&
+          lot.auctionEnd !== null &&
+          lot.auctionEnd <= new Date())
+      ) {
+        throw new ConflictException('This auction cannot be cancelled.');
+      }
+
+      if (lot._count.bids > 0) {
+        throw new ConflictException(
+          'An auction with bids cannot be cancelled.',
+        );
+      }
+
+      await transaction.lot.update({
+        where: { id: lotId },
+        data: { status: AuctionStatus.CANCELLED },
+      });
+    });
+
+    return { lotId, cancelled: true };
+  }
+
+  private isDateChanged(
+    requestedDate: string | null,
+    currentDate: Date | null,
+  ): boolean {
+    if (requestedDate === null || currentDate === null) {
+      return requestedDate !== null || currentDate !== null;
+    }
+
+    return new Date(requestedDate).getTime() !== currentDate.getTime();
   }
 }
