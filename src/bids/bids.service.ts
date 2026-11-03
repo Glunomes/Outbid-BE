@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { AuctionStatus, Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { BidsGateway } from './bids.gateway.js';
+import { AuctionRealtimeGateway } from '../auctions/auction-realtime.gateway.js';
 import { getExtendedAuctionEnd } from './utils/auction-extension.util.js';
 import type { BidHistoryResponseDto } from './schemas/bid-history.schemas.js';
 import type { MakeBidResponseDto } from './schemas/make-bid.schemas.js';
@@ -17,7 +17,7 @@ import type { MakeBidResponseDto } from './schemas/make-bid.schemas.js';
 export class BidsService {
   constructor(
     private readonly prismaService: PrismaService,
-    private readonly bidsGateway: BidsGateway,
+    private readonly auctionRealtimeGateway: AuctionRealtimeGateway,
   ) {}
 
   async getBidHistory(lotId: string): Promise<BidHistoryResponseDto> {
@@ -238,8 +238,10 @@ export class BidsService {
       };
     });
 
+    this.auctionRealtimeGateway.broadcastBidPlaced(result.response);
+
     if (result.auctionExtended) {
-      this.bidsGateway.broadcastAuctionExtended(
+      this.auctionRealtimeGateway.broadcastAuctionExtended(
         lotId,
         result.response.auctionEnd,
       );

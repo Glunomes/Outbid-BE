@@ -133,17 +133,15 @@ export class LotsService {
     ]);
 
     return {
-      lots: lots.map(
-        (lot): LotCatalogItemDto => ({
-          id: lot.id,
-          name: lot.name,
-          description: lot.description,
-          price: (lot.currentPrice ?? lot.startingPrice).toFixed(2),
-          auctionStart: lot.auctionStart?.toISOString() ?? null,
-          auctionEnd: lot.auctionEnd?.toISOString() ?? null,
-          status: lot.status,
-        }),
-      ),
+      lots: lots.map((lot): LotCatalogItemDto => ({
+        id: lot.id,
+        name: lot.name,
+        description: lot.description,
+        price: (lot.currentPrice ?? lot.startingPrice).toFixed(2),
+        auctionStart: lot.auctionStart?.toISOString() ?? null,
+        auctionEnd: lot.auctionEnd?.toISOString() ?? null,
+        status: lot.status,
+      })),
       page,
       limit,
       total,
