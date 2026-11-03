@@ -18,9 +18,9 @@ export class LotsLifecycleService implements OnModuleInit, OnModuleDestroy {
   constructor(private readonly prismaService: PrismaService) {}
 
   async onModuleInit(): Promise<void> {
-    await this.activateDueLots();
+    await this.processDueLots();
     this.interval = setInterval(
-      () => void this.activateDueLots(),
+      () => void this.processDueLots(),
       LIFECYCLE_CHECK_INTERVAL_MS,
     );
     this.interval.unref();
@@ -32,7 +32,7 @@ export class LotsLifecycleService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  private async activateDueLots(): Promise<void> {
+  private async processDueLots(): Promise<void> {
     if (this.isProcessing) {
       return;
     }
@@ -40,20 +40,33 @@ export class LotsLifecycleService implements OnModuleInit, OnModuleDestroy {
     this.isProcessing = true;
 
     try {
-      const { count } = await this.prismaService.lot.updateMany({
+      const now = new Date();
+      const activated = await this.prismaService.lot.updateMany({
         where: {
           status: AuctionStatus.SCHEDULED,
-          auctionStart: { lte: new Date() },
+          auctionStart: { lte: now },
         },
         data: { status: AuctionStatus.ACTIVE },
       });
 
-      if (count > 0) {
-        this.logger.log(`Activated ${count} scheduled auction(s).`);
+      if (activated.count > 0) {
+        this.logger.log(`Activated ${activated.count} scheduled auction(s).`);
+      }
+
+      const ended = await this.prismaService.lot.updateMany({
+        where: {
+          status: AuctionStatus.ACTIVE,
+          auctionEnd: { lte: now },
+        },
+        data: { status: AuctionStatus.ENDED },
+      });
+
+      if (ended.count > 0) {
+        this.logger.log(`Ended ${ended.count} expired auction(s).`);
       }
     } catch (error) {
       this.logger.error(
-        'Failed to activate scheduled auctions.',
+        'Failed to process auction lifecycle.',
         error instanceof Error ? error.stack : String(error),
       );
     } finally {
