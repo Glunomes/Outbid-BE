@@ -10,6 +10,7 @@ describe('BidsService live events', () => {
   const sellerId = '550e8400-e29b-41d4-a716-446655440002';
 
   const createService = (auctionEnd: Date) => {
+    const bidCreatedAt = new Date('2026-11-04T18:00:00.000Z');
     let transactionCompleted = false;
     const transaction = {
       $queryRaw: vi.fn(),
@@ -26,7 +27,9 @@ describe('BidsService live events', () => {
       },
       bid: {
         findFirst: vi.fn().mockResolvedValue(null),
-        create: vi.fn().mockResolvedValue({ id: 'bid-1' }),
+        create: vi
+          .fn()
+          .mockResolvedValue({ id: 'bid-1', createdAt: bidCreatedAt }),
       },
       wallet: {
         findMany: vi.fn().mockResolvedValue([
@@ -80,6 +83,7 @@ describe('BidsService live events', () => {
       amount: '12.50',
       currentPrice: '12.50',
       auctionEnd: auctionEnd.toISOString(),
+      createdAt: '2026-11-04T18:00:00.000Z',
     });
     expect(
       auctionRealtimeGatewayMock.broadcastAuctionExtended,
@@ -92,9 +96,10 @@ describe('BidsService live events', () => {
 
     const response = await service.makeBid(lotId, '12.50', bidderId);
 
-    expect(auctionRealtimeGatewayMock.broadcastBidPlaced).toHaveBeenCalledWith(
-      response,
-    );
+    expect(auctionRealtimeGatewayMock.broadcastBidPlaced).toHaveBeenCalledWith({
+      ...response,
+      createdAt: '2026-11-04T18:00:00.000Z',
+    });
     expect(response.auctionEnd).toBe(
       new Date(auctionEnd.getTime() + 2 * 60_000).toISOString(),
     );

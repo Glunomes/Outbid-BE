@@ -212,7 +212,7 @@ export class BidsService {
             lotId,
             userId,
           },
-          select: { id: true },
+          select: { id: true, createdAt: true },
         });
 
         const extendedAuctionEnd = getExtendedAuctionEnd(lot.auctionEnd, now);
@@ -235,12 +235,20 @@ export class BidsService {
             currentPrice: bidAmount.toFixed(2),
             auctionEnd: auctionEnd.toISOString(),
           },
+          bidEvent: {
+            bidId: bid.id,
+            lotId,
+            amount: bidAmount.toFixed(2),
+            currentPrice: bidAmount.toFixed(2),
+            auctionEnd: auctionEnd.toISOString(),
+            createdAt: bid.createdAt.toISOString(),
+          },
           auctionExtended,
         };
       },
     );
 
-    this.auctionRealtimeGateway.broadcastBidPlaced(result.response);
+    this.auctionRealtimeGateway.broadcastBidPlaced(result.bidEvent);
 
     if (result.auctionExtended) {
       this.auctionRealtimeGateway.broadcastAuctionExtended(

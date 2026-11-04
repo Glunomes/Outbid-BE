@@ -4,4 +4,5 @@ export type BidPlacedEvent = {
   amount: string;
   currentPrice: string;
   auctionEnd: string;
+  createdAt: string;
 };

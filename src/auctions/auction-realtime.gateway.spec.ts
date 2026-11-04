@@ -240,6 +240,7 @@ describe('AuctionRealtimeGateway', () => {
       amount: '12.00',
       currentPrice: '12.00',
       auctionEnd: '2026-11-03T12:30:00.000Z',
+      createdAt: '2026-11-03T12:00:00.000Z',
     };
 
     gateway.broadcastBidPlaced(event);
