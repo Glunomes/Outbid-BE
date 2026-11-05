@@ -36,7 +36,7 @@ const lotResponseSelect = {
 
 const lotCardSelect = {
   ...lotResponseSelect,
-  seller: { select: { name: true } },
+  seller: { select: { id: true, name: true } },
 } satisfies Prisma.LotSelect;
 
 type LotResponseRecord = Prisma.LotGetPayload<{
@@ -47,7 +47,9 @@ type LotCardRecord = Prisma.LotGetPayload<{
   select: typeof lotCardSelect;
 }>;
 
-export type LotCardResponseDto = LotResponseDto & { seller: { name: string } };
+export type LotCardResponseDto = LotResponseDto & {
+  seller: { id: string; name: string };
+};
 
 const toLotResponse = (lot: LotResponseRecord): LotResponseDto => ({
   id: lot.id,

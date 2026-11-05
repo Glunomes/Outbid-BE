@@ -22,6 +22,7 @@ import {
   type CreateLotDto,
   type LotResponseDto,
 } from './schemas/create-lots.schemas.js';
+import type { LotCardResponseDto } from './lots.service.js';
 import {
   updateLotSchema,
   type UpdateLotDto,
@@ -66,7 +67,7 @@ export class LotsController {
   }
 
   @Get(':id')
-  getLot(@Param('id', ParseUUIDPipe) id: string): Promise<LotResponseDto> {
+  getLot(@Param('id', ParseUUIDPipe) id: string): Promise<LotCardResponseDto> {
     return this.lotsService.getLot(id);
   }
 
