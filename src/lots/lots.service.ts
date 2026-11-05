@@ -18,6 +18,8 @@ import type {
   LotsCatalogOptions,
   LotsCatalogResponseDto,
 } from './interfaces/lots-catalog.interfaces.js';
+import type { MyLotsResponseDto } from './interfaces/my-lots.interfaces.js';
+import type { MyLotsQueryDto } from './schemas/my-lots.schemas.js';
 import { Prisma } from '../generated/prisma/client.js';
 import { AuctionStatus } from '../generated/prisma/enums.js';
 
@@ -144,6 +146,39 @@ export class LotsService {
         auctionEnd: lot.auctionEnd?.toISOString() ?? null,
         status: lot.status,
       })),
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async getMyLots(
+    sellerId: string,
+    { page = 1, limit = 25 }: MyLotsQueryDto = {},
+  ): Promise<MyLotsResponseDto> {
+    if (!Number.isInteger(page) || page < 1) {
+      throw new BadRequestException('Page must be a positive integer.');
+    }
+
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+      throw new BadRequestException('Limit must be between 1 and 100.');
+    }
+
+    const where: Prisma.LotWhereInput = { sellerId };
+    const [lots, total] = await this.prismaService.$transaction([
+      this.prismaService.lot.findMany({
+        where,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        skip: (page - 1) * limit,
+        take: limit,
+        select: lotResponseSelect,
+      }),
+      this.prismaService.lot.count({ where }),
+    ]);
+
+    return {
+      lots: lots.map(toLotResponse),
       page,
       limit,
       total,

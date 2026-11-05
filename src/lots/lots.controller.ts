@@ -33,6 +33,11 @@ import {
   type LotsCatalogQueryDto,
 } from './schemas/lots-catalog.schemas.js';
 import type { LotsCatalogResponseDto } from './interfaces/lots-catalog.interfaces.js';
+import {
+  myLotsQuerySchema,
+  type MyLotsQueryDto,
+} from './schemas/my-lots.schemas.js';
+import type { MyLotsResponseDto } from './interfaces/my-lots.interfaces.js';
 
 @Controller('lots')
 export class LotsController {
@@ -64,6 +69,16 @@ export class LotsController {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<{ lotId: string; cancelled: true }> {
     return this.lotsService.cancelLot(id, user.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('mine')
+  getMyLots(
+    @Query(new ZodValidationPipe(myLotsQuerySchema))
+    query: MyLotsQueryDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<MyLotsResponseDto> {
+    return this.lotsService.getMyLots(user.userId, query);
   }
 
   @Get(':id')
